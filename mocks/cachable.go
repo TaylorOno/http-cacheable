@@ -73,10 +73,10 @@ func (m *MockHTTPCacheProvider) EXPECT() *MockHTTPCacheProviderMockRecorder {
 }
 
 // Get mocks base method
-func (m *MockHTTPCacheProvider) Get(arg0 string) (http.Response, bool) {
+func (m *MockHTTPCacheProvider) Get(arg0 string) (*http.Response, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0)
-	ret0, _ := ret[0].(http.Response)
+	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(bool)
 	return ret0, ret1
 }
@@ -88,7 +88,7 @@ func (mr *MockHTTPCacheProviderMockRecorder) Get(arg0 interface{}) *gomock.Call 
 }
 
 // Set mocks base method
-func (m *MockHTTPCacheProvider) Set(arg0 string, arg1 http.Response, arg2 time.Duration) {
+func (m *MockHTTPCacheProvider) Set(arg0 string, arg1 *http.Response, arg2 time.Duration) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Set", arg0, arg1, arg2)
 }

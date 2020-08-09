@@ -102,7 +102,7 @@ var _ = Describe("cacheable_middleware", func() {
 			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
-			resp := http.Response{}
+			resp := &http.Response{}
 
 			mockCache.EXPECT().Get(gomock.Any()).Return(resp, true)
 

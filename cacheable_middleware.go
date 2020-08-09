@@ -29,8 +29,8 @@ type CacheConfig struct {
 }
 
 type HTTPCacheProvider interface {
-	Get(string) (http.Response, bool)
-	Set(string, http.Response, time.Duration)
+	Get(string) (*http.Response, bool)
+	Set(string, *http.Response, time.Duration)
 }
 
 // NewCacheableMiddleware - Creates Middleware that can be used to create cache enabled HTTP clients
@@ -43,7 +43,7 @@ func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
 
 			cacheResult, ok := c.Get(key)
 			if ok {
-				return &cacheResult, nil
+				return cacheResult, nil
 			}
 
 			response, err := client.Do(req)
@@ -52,7 +52,7 @@ func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
 			}
 
 			ttl := getTTL(req, defaultExpiration)
-			c.Set(key, *response, ttl)
+			c.Set(key, response, ttl)
 
 			return response, nil
 		})
