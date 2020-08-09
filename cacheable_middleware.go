@@ -33,11 +33,10 @@ type HTTPCacheProvider interface {
 	Set(string, http.Response, time.Duration)
 }
 
-var defaultExpiration time.Duration
 
 // NewCacheableMiddleware - Creates Middleware that can be used to create cache enabled HTTP clients
 func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
-	defaultExpiration = time.Duration(ttl) * time.Second
+	defaultExpiration := time.Duration(ttl) * time.Second
 	return func(client Client) Client {
 		return ClientFunc(func(req *http.Request) (*http.Response, error) {
 			var response *http.Response
@@ -53,7 +52,7 @@ func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
 				return response, err
 			}
 
-			ttl := getTTL(req)
+			ttl := getTTL(req, defaultExpiration)
 			c.Set(key, *response, ttl)
 
 			return response, nil
@@ -75,14 +74,13 @@ func getKey(r *http.Request) string {
 	if len(config.Key) > 0 {
 		return config.Key
 	}
-
 	return GenerateKeyHash(r)
 }
 
-func getTTL(r *http.Request) time.Duration {
+func getTTL(r *http.Request, defaultTTL time.Duration) time.Duration {
 	config := getConfigFromContext(r.Context())
 	if config.TTL != nil {
 		return time.Duration(*config.TTL) * time.Second
 	}
-	return defaultExpiration
+	return defaultTTL
 }
