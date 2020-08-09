@@ -24,7 +24,7 @@ type HTTPCacheProvider interface {
 }
 
 const (
-	DefaultExpiration time.Duration = 0
+	DefaultExpiration time.Duration = -1
 )
 
 // NewCacheableMiddleware - Creates middleware that can be used to create cache enabled HTTP clients
@@ -32,8 +32,9 @@ func NewCacheableMiddleware(c HTTPCacheProvider) Middleware {
 	return func(client Client) Client {
 		return ClientFunc(func(req *http.Request) (*http.Response, error) {
 			var response *http.Response
+			key := GetKey(req)
 
-			cacheResult, ok := c.Get("test")
+			cacheResult, ok := c.Get(key)
 			if ok {
 				return &cacheResult, nil
 			}
@@ -43,7 +44,7 @@ func NewCacheableMiddleware(c HTTPCacheProvider) Middleware {
 				return response, err
 			}
 
-			c.Set("key", *response, DefaultExpiration)
+			c.Set(key, *response, DefaultExpiration)
 
 			return response, nil
 		})

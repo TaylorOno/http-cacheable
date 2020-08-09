@@ -4,6 +4,7 @@ import (
 	"cacheable"
 	"cacheable/mocks"
 	"errors"
+	"github.com/SemanticallyNull/golandreporter"
 	"net/http"
 	"reflect"
 	"testing"
@@ -15,7 +16,7 @@ import (
 
 func TestCacheable(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Cacheable Suite")
+	RunSpecsWithCustomReporters(t, "Cacheable Suite", []Reporter{golandreporter.NewAutoGolandReporter()})
 }
 
 var _ = Describe("cacheable_middleware", func() {
