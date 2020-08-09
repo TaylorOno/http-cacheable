@@ -1,6 +1,7 @@
 package cacheable
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
@@ -18,21 +19,29 @@ func (c ClientFunc) Do(req *http.Request) (*http.Response, error) {
 	return c(req)
 }
 
+type key int
+
+const cacheConfigKey key = iota
+
+type CacheConfig struct {
+	Key string
+	TTL *int
+}
+
 type HTTPCacheProvider interface {
 	Get(string) (http.Response, bool)
 	Set(string, http.Response, time.Duration)
 }
 
-const (
-	DefaultExpiration time.Duration = -1
-)
+var defaultExpiration time.Duration
 
-// NewCacheableMiddleware - Creates middleware that can be used to create cache enabled HTTP clients
-func NewCacheableMiddleware(c HTTPCacheProvider) Middleware {
+// NewCacheableMiddleware - Creates Middleware that can be used to create cache enabled HTTP clients
+func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
+	defaultExpiration = time.Duration(ttl) * time.Second
 	return func(client Client) Client {
 		return ClientFunc(func(req *http.Request) (*http.Response, error) {
 			var response *http.Response
-			key := GetKey(req)
+			key := getKey(req)
 
 			cacheResult, ok := c.Get(key)
 			if ok {
@@ -44,9 +53,36 @@ func NewCacheableMiddleware(c HTTPCacheProvider) Middleware {
 				return response, err
 			}
 
-			c.Set(key, *response, DefaultExpiration)
+			ttl := getTTL(req)
+			c.Set(key, *response, ttl)
 
 			return response, nil
 		})
 	}
+}
+
+func getConfigFromContext(ctx context.Context) CacheConfig {
+	value := ctx.Value(cacheConfigKey)
+	config, ok := value.(CacheConfig)
+	if !ok {
+		return CacheConfig{}
+	}
+	return config
+}
+
+func getKey(r *http.Request) string {
+	config := getConfigFromContext(r.Context())
+	if len(config.Key) > 0 {
+		return config.Key
+	}
+
+	return GenerateKeyHash(r)
+}
+
+func getTTL(r *http.Request) time.Duration {
+	config := getConfigFromContext(r.Context())
+	if config.TTL != nil {
+		return time.Duration(*config.TTL) * time.Second
+	}
+	return defaultExpiration
 }

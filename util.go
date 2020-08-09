@@ -1,6 +1,7 @@
 package cacheable
 
 import (
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"io/ioutil"
@@ -9,7 +10,8 @@ import (
 	"strings"
 )
 
-func GetKey(r *http.Request) string {
+// GenerateKeyHash - a generic method for creating a string cache key from an http.Request object
+func GenerateKeyHash(r *http.Request) string {
 	s := sha1.New()
 	s.Write([]byte(r.Method))
 	s.Write([]byte(r.URL.Host))
@@ -50,4 +52,9 @@ func GetKey(r *http.Request) string {
 	}
 
 	return base64.StdEncoding.EncodeToString(s.Sum(nil))
+}
+
+// ContextWithCacheConfig - Returns a context with a CacheConfig Object
+func ContextWithCacheConfig(ctx context.Context, config CacheConfig) context.Context {
+	return context.WithValue(ctx, cacheConfigKey, config)
 }

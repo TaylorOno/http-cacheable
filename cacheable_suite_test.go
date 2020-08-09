@@ -3,11 +3,13 @@ package cacheable_test
 import (
 	"cacheable"
 	"cacheable/mocks"
+	"context"
 	"errors"
 	"github.com/SemanticallyNull/golandreporter"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
@@ -38,7 +40,7 @@ var _ = Describe("cacheable_middleware", func() {
 
 	Context("NewCacheableMiddleware", func() {
 		It("Creates a Middleware function", func() {
-			result := cacheable.NewCacheableMiddleware(mockCache)
+			result := cacheable.NewCacheableMiddleware(mockCache, 0)
 
 			Expect(reflect.TypeOf(result).Name()).To(Equal("Middleware"))
 		})
@@ -47,7 +49,7 @@ var _ = Describe("cacheable_middleware", func() {
 	Context("CacheableMiddleware", func() {
 		It("Returns a ClientFunc", func() {
 			client := &http.Client{}
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 
 			result := cacheableMiddleware(client)
 
@@ -57,7 +59,7 @@ var _ = Describe("cacheable_middleware", func() {
 
 	Context("Cache ClientFunc", func() {
 		It("Calls Parent Method and caches result on success", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 			resp := &http.Response{}
@@ -70,7 +72,7 @@ var _ = Describe("cacheable_middleware", func() {
 		})
 
 		It("Returns and error on parent error", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 
@@ -83,7 +85,7 @@ var _ = Describe("cacheable_middleware", func() {
 		})
 
 		It("Returns and error on parent error and does not set cache", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 
@@ -97,7 +99,7 @@ var _ = Describe("cacheable_middleware", func() {
 		})
 
 		It("Does not call parent method on cache hit", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 			resp := http.Response{}
@@ -105,6 +107,50 @@ var _ = Describe("cacheable_middleware", func() {
 			mockCache.EXPECT().Get(gomock.Any()).Return(resp, true)
 
 			_, _ = result.Do(req)
+		})
+
+		It("Uses key from context if available", func() {
+			var key string
+			var ttl time.Duration
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 1)
+			result := cacheableMiddleware(mockClient)
+			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
+			req = req.WithContext(cacheable.ContextWithCacheConfig(context.Background(), cacheable.CacheConfig{Key: "key"}))
+			resp := http.Response{}
+
+			mockCache.EXPECT().Get(gomock.Any())
+			mockClient.EXPECT().Do(gomock.Any()).Return(&resp, nil)
+			mockCache.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(k string, v interface{}, t time.Duration) {
+				key = k
+				ttl = t
+			})
+
+			_, _ = result.Do(req)
+
+			Expect(key).To(Equal("key"))
+			Expect(ttl).To(Equal(1 * time.Second))
+		})
+
+		It("Uses ttl from context if available", func() {
+			var key string
+			var ttl time.Duration
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			result := cacheableMiddleware(mockClient)
+			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
+			configTTL := 5
+			req = req.WithContext(cacheable.ContextWithCacheConfig(context.Background(), cacheable.CacheConfig{Key: "key", TTL: &configTTL}))
+			resp := http.Response{}
+
+			mockCache.EXPECT().Get(gomock.Any())
+			mockClient.EXPECT().Do(gomock.Any()).Return(&resp, nil)
+			mockCache.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(k string, v interface{}, t time.Duration) {
+				key = k
+				ttl = t
+			})
+
+			_, _ = result.Do(req)
+			Expect(key).To(Equal("key"))
+			Expect(ttl).To(Equal(5 * time.Second))
 		})
 	})
 })
