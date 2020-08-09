@@ -1,11 +1,11 @@
 package cacheable_test
 
 import (
-	"cacheable"
-	"cacheable/mocks"
 	"context"
 	"errors"
 	"github.com/SemanticallyNull/golandreporter"
+	cacheable "github.com/TaylorOno/http-cacheable/v2"
+	"github.com/TaylorOno/http-cacheable/v2/mocks"
 	"net/http"
 	"reflect"
 	"testing"

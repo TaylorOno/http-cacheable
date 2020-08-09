@@ -2,7 +2,7 @@ package cacheable_test
 
 import (
 	"bytes"
-	"cacheable"
+	cacheable "github.com/TaylorOno/http-cacheable/v2"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"net/http"

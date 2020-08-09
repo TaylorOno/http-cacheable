@@ -33,7 +33,6 @@ type HTTPCacheProvider interface {
 	Set(string, http.Response, time.Duration)
 }
 
-
 // NewCacheableMiddleware - Creates Middleware that can be used to create cache enabled HTTP clients
 func NewCacheableMiddleware(c HTTPCacheProvider, ttl int) Middleware {
 	defaultExpiration := time.Duration(ttl) * time.Second
