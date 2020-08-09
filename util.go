@@ -1,6 +1,7 @@
 package cacheable
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
@@ -40,15 +41,12 @@ func GenerateKeyHash(r *http.Request) string {
 	}
 
 	if r.Body != nil {
-		requestBody, err := r.GetBody()
-		if err != nil {
-			defer requestBody.Close()
-		}
-
-		body, _ := ioutil.ReadAll(requestBody)
+		defer r.Body.Close()
+		body, _ := ioutil.ReadAll(r.Body)
 		if len(body) > 0 {
 			s.Write(body)
 		}
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
 	}
 
 	return base64.StdEncoding.EncodeToString(s.Sum(nil))
