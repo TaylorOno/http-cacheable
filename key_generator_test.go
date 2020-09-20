@@ -2,13 +2,14 @@ package cacheable_test
 
 import (
 	"bytes"
+	"net/http"
+
 	cacheable "github.com/TaylorOno/http-cacheable"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"net/http"
 )
 
-var _ = Describe("Util", func() {
+var _ = Describe("key_generator", func() {
 	Context("GenerateKeyHash", func() {
 		It("Creates a hashkey from a http.Request", func() {
 			req, _ := http.NewRequest(http.MethodGet, "https://localhost", nil)

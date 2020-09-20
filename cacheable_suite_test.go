@@ -3,14 +3,14 @@ package cacheable_test
 import (
 	"context"
 	"errors"
-	"github.com/SemanticallyNull/golandreporter"
-	cacheable "github.com/TaylorOno/http-cacheable"
-	"github.com/TaylorOno/http-cacheable/mocks"
 	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/TaylorOno/golandreporter"
+	cacheable "github.com/TaylorOno/http-cacheable"
+	"github.com/TaylorOno/http-cacheable/mocks"
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,7 +18,7 @@ import (
 
 func TestCacheable(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithCustomReporters(t, "Cacheable Suite", []Reporter{golandreporter.NewAutoGolandReporter()})
+	RunSpecsWithCustomReporters(t, "Cacheable Suite", []Reporter{golandreporter.NewGolandReporter()})
 }
 
 var _ = Describe("cacheable_middleware", func() {
@@ -39,8 +39,8 @@ var _ = Describe("cacheable_middleware", func() {
 	})
 
 	Context("NewCacheableMiddleware", func() {
-		It("Creates a Middleware function", func() {
-			result := cacheable.NewCacheableMiddleware(mockCache, 0)
+		It("Creates_a_Middleware_function", func() {
+			result := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 
 			Expect(reflect.TypeOf(result).Name()).To(Equal("Middleware"))
 		})
@@ -49,7 +49,7 @@ var _ = Describe("cacheable_middleware", func() {
 	Context("CacheableMiddleware", func() {
 		It("Returns a ClientFunc", func() {
 			client := &http.Client{}
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 
 			result := cacheableMiddleware(client)
 
@@ -59,7 +59,7 @@ var _ = Describe("cacheable_middleware", func() {
 
 	Context("Cache ClientFunc", func() {
 		It("Calls Parent Method and caches result on success", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 			resp := &http.Response{}
@@ -72,7 +72,7 @@ var _ = Describe("cacheable_middleware", func() {
 		})
 
 		It("Returns and error on parent error", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 
@@ -85,7 +85,7 @@ var _ = Describe("cacheable_middleware", func() {
 		})
 
 		It("Returns and error on parent error and does not set cache", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 
@@ -98,8 +98,22 @@ var _ = Describe("cacheable_middleware", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("Returns result but does not set cache on invalid response", func() {
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, cacheable.StatusCodeValidator)
+			result := cacheableMiddleware(mockClient)
+			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
+			resp := &http.Response{StatusCode: 500}
+
+			mockCache.EXPECT().Get(gomock.Any())
+			mockClient.EXPECT().Do(gomock.Any()).Return(resp, nil)
+			mockCache.EXPECT().Set(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			_, err := result.Do(req)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("Does not call parent method on cache hit", func() {
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 			resp := &http.Response{}
@@ -112,7 +126,7 @@ var _ = Describe("cacheable_middleware", func() {
 		It("Uses key from context if available", func() {
 			var key string
 			var ttl time.Duration
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 1)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 1, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
 			req = req.WithContext(cacheable.ContextWithCacheConfig(context.Background(), cacheable.CacheConfig{Key: "key"}))
@@ -134,11 +148,10 @@ var _ = Describe("cacheable_middleware", func() {
 		It("Uses ttl from context if available", func() {
 			var key string
 			var ttl time.Duration
-			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0)
+			cacheableMiddleware := cacheable.NewCacheableMiddleware(mockCache, 0, func(response *http.Response) bool { return true })
 			result := cacheableMiddleware(mockClient)
 			req, _ := http.NewRequest(http.MethodGet, "localhost", nil)
-			configTTL := 5
-			req = req.WithContext(cacheable.ContextWithCacheConfig(context.Background(), cacheable.CacheConfig{Key: "key", TTL: &configTTL}))
+			req = req.WithContext(cacheable.ContextWithCacheConfig(context.Background(), cacheable.CacheConfig{Key: "key", TTLSeconds: 5}))
 			resp := http.Response{}
 
 			mockCache.EXPECT().Get(gomock.Any())
